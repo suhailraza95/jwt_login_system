@@ -1,0 +1,32 @@
+{
+  "name": "jwt_login_system",
+  "version": "1.0.0",
+  "description": "jwt_login_system",
+  "homepage": "https://github.com/suhailraza95/jwt_login_system#readme",
+  "bugs": {
+    "url": "https://github.com/suhailraza95/jwt_login_system/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suhailraza95/jwt_login_system.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-async-handler": "^1.2.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.6.2",
+    "morgan": "^1.10.1",
+    "validator": "^13.15.35"
+  }
+}
