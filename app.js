@@ -1,11 +1,34 @@
+require('dotenv').config();
+
 const express = require('express');
+const connectDB = require('./config/db');
+const morgan = require("morgan");
+ 
+
+const userRoutes = require('./routes/userRoutes');
+
+
+
+const errorMiddleware = require('./middleware/errorMiddleware');
+const apiKeyMiddleware = require('./middleware/apiKeyMiddleware');
+
 const app = express();
-const port = 3000;
+app.use(morgan("tiny"));
+// CONNECT DATABASE
+connectDB();
 
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
+// REQUIRED FOR req.body
+app.use(express.json());
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+
+// ROUTES
+app.use('/api',apiKeyMiddleware, userRoutes);
+
+
+app.use(errorMiddleware);
+
+
+// SERVER
+app.listen(process.env.PORT, () => {
+  console.log('Server running 🚀');
 });
