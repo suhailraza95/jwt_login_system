@@ -4,7 +4,8 @@ const router = express.Router();
 const {registerUser,
     verifyEmailOtp,
     loginUser,
-    currentUser
+    forgotPassword,
+    resetPassword
 } = require('../controllers/usercontroller');
 const registerUserREQSchema = require("../schema/request-schema/create-user-schema")
 const validateDto = require("../middleware/validate-dto")
@@ -22,5 +23,11 @@ router.post("/register",
     router.post("/login",
     validateDto(loginUserREQSchema),
     loginUser);
+
+    router.post("/forgot-password",
+    forgotPassword);
+
+    router.post("/reset-password",
+    resetPassword);
 
     module.exports = router;
