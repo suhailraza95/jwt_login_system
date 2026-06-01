@@ -1,0 +1,225 @@
+openapi: 3.1.0
+
+info:
+title: JWT Login System API
+version: 1.0.0
+description: JWT Authentication System
+
+servers:
+
+* url: http://localhost:5004
+
+tags:
+
+* name: Auth
+  description: Authentication APIs
+
+components:
+securitySchemes:
+ApiKeyAuth:
+type: apiKey
+in: header
+name: x-api-key
+
+schemas:
+RegisterRequest:
+type: object
+required:
+- username
+- email
+- password
+
+```
+  properties:
+    username:
+      type: string
+      example: suhailraza
+
+    email:
+      type: string
+      example: suhailhome96@gmail.com
+
+    password:
+      type: string
+      example: StrongPass@123
+
+    privacyPolicyConsent:
+      type: boolean
+      example: true
+
+    termsOfServiceConsent:
+      type: boolean
+      example: true
+
+    marketingConsent:
+      type: boolean
+      example: false
+
+    aiProcessingConsent:
+      type: boolean
+      example: true
+
+LoginRequest:
+  type: object
+  required:
+    - email
+    - password
+
+  properties:
+    email:
+      type: string
+      example: suhailhome96@gmail.com
+
+    password:
+      type: string
+      example: StrongPass@123
+```
+
+paths:
+
+/api/register:
+post:
+tags:
+- Auth
+
+```
+  summary: Register User
+
+  security:
+    - ApiKeyAuth: []
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/RegisterRequest'
+
+  responses:
+    "201":
+      description: User registered successfully
+
+    "400":
+      description: Validation error
+```
+
+/api/login:
+post:
+tags:
+- Auth
+
+```
+  summary: Login User
+
+  security:
+    - ApiKeyAuth: []
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/LoginRequest'
+
+  responses:
+    "200":
+      description: Login successful
+
+    "401":
+      description: Invalid credentials
+```
+
+/api/verifyotp:
+post:
+tags:
+- Auth
+
+```
+  summary: Verify OTP
+
+  security:
+    - ApiKeyAuth: []
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+        schema:
+          type: object
+
+          properties:
+            email:
+              type: string
+
+            otp:
+              type: string
+
+  responses:
+    "200":
+      description: OTP verified
+```
+
+/api/forgot-password:
+post:
+tags:
+- Auth
+
+```
+  summary: Forgot Password
+
+  security:
+    - ApiKeyAuth: []
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+        schema:
+          type: object
+
+          properties:
+            email:
+              type: string
+
+  responses:
+    "200":
+      description: Reset OTP sent
+```
+
+/api/reset-password:
+post:
+tags:
+- Auth
+
+```
+  summary: Reset Password
+
+  security:
+    - ApiKeyAuth: []
+
+  requestBody:
+    required: true
+
+    content:
+      application/json:
+        schema:
+          type: object
+
+          properties:
+            email:
+              type: string
+
+            otp:
+              type: string
+
+            newPassword:
+              type: string
+
+  responses:
+    "200":
+      description: Password reset successful
+```
