@@ -1,5 +1,5 @@
 require('dotenv').config();
-<<<<<<< HEAD
+
 
 const express = require('express');
 const connectDB = require('./config/db');
@@ -48,32 +48,13 @@ app.get("/openapi.yaml", (req, res) => {
   );
 });
 
-=======
 
-const express = require('express');
-const connectDB = require('./config/db');
-const morgan = require("morgan");
- 
-
-const authRoutes = require('./routes/authRoutes');
-const otpRoutes = require('./routes/otpRoutes');
-const passwordRoutes = require('./routes/passwordRoutes');
-
-
-
-const errorMiddleware = require('./middleware/errorMiddleware');
-const apiKeyMiddleware = require('./middleware/apiKeyMiddleware');
-
-const app = express();
-app.use(morgan("tiny"));
-// CONNECT DATABASE
-connectDB();
 
 // REQUIRED FOR req.body
 app.use(express.json());
 
 
->>>>>>> 356318497d0545274308fe65225ebde45f729e64
+
 // ROUTES
 app.use('/api',apiKeyMiddleware, authRoutes);
 app.use('/api',apiKeyMiddleware, otpRoutes);
