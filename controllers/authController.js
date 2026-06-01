@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 
 const User = require('../models/userModel');
 const generateToken = require('../resources/generateToken');
+const generateRefreshToken = require('../resources/generateRefreshToken');
 const Otp = require('../models/otpModel');
 
 const { sendOtpEmail } = require('../services/mailService');
@@ -180,100 +181,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
 });
 
-// VERIFY EMAIL OTP
-const verifyEmailOtp = asyncHandler(async (req, res) => {
 
-    const {
-        email,
-        otp
-    } = req.body;
-
-
-    // REQUIRED FIELDS
-    if (!email || !otp) {
-        res.status(400);
-        throw new Error("Email and OTP are required");
-    }
-
-
-    // FIND USER
-    const user = await User.findOne({ email });
-
-    if (!user) {
-        res.status(404);
-        throw new Error("User not found");
-    }
-
-
-    // CHECK IF ALREADY VERIFIED
-    if (user.isEmailVerified) {
-        res.status(400);
-        throw new Error("Email already verified");
-    }
-
-
-    // GET LATEST OTP
-    const existingOtp = await Otp.findOne({
-        userId: user._id,
-        purpose: 'EMAIL_VERIFICATION',
-        isUsed: false
-    }).sort({ createdAt: -1 });
-
-
-    if (!existingOtp) {
-        res.status(404);
-        throw new Error("OTP not found");
-    }
-
-
-    // CHECK OTP EXPIRY
-    if (existingOtp.expiresAt < new Date()) {
-        res.status(400);
-        throw new Error("OTP has expired");
-    }
-
-
-    // CHECK ATTEMPTS
-    if (existingOtp.attempts >= 5) {
-        res.status(400);
-        throw new Error("Maximum OTP attempts exceeded");
-    }
-
-
-    // COMPARE OTP
-    const isOtpMatched = await bcrypt.compare(
-        otp,
-        existingOtp.otpHash
-    );
-
-
-    // INCREASE ATTEMPTS IF WRONG
-    if (!isOtpMatched) {
-
-        existingOtp.attempts += 1;
-        await existingOtp.save();
-
-        res.status(400);
-        throw new Error("Invalid OTP");
-    }
-
-
-    // MARK OTP AS USED
-    existingOtp.isUsed = true;
-    await existingOtp.save();
-
-
-    // VERIFY USER EMAIL
-    user.isEmailVerified = true;
-    await user.save();
-
-
-    // RESPONSE
-    res.status(200).json({
-        message: "Email verified successfully"
-    });
-
-});
 
 // LOGIN USER
 const loginUser = asyncHandler(async (req, res) => {
@@ -335,14 +243,23 @@ const loginUser = asyncHandler(async (req, res) => {
 
 
     // GENERATE JWT TOKEN
-    const token = generateToken(user._id);
+    const accessToken = generateToken(user._id);
+
+    const refreshToken = generateRefreshToken(
+    user._id
+    );
+
+    user.refreshToken = refreshToken;
+
+await user.save();
 
 
     // RESPONSE
     res.status(200).json({
         message: "Login successful",
 
-        token,
+        accessToken,
+        refreshToken,
 
         user: {
             _id: user._id,
@@ -354,180 +271,66 @@ const loginUser = asyncHandler(async (req, res) => {
 
 });
 
-const forgotPassword = asyncHandler(async (req, res) => {
 
-    const { email } = req.body;
 
-    if (!email) {
-        res.status(400);
-        throw new Error("Email is required");
+const refreshAccessToken = asyncHandler(
+async (req, res) => {
+
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+        res.status(401);
+        throw new Error("Refresh token required");
     }
 
-    const user = await User.findOne({
-        email,
-        isDeleted: false
-    });
+    const decoded = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET
+    );
+
+    const user = await User.findById(
+        decoded.id
+    );
 
     if (!user) {
-        res.status(404);
+        res.status(401);
         throw new Error("User not found");
     }
 
-    // Remove old reset OTPs
-    await Otp.deleteMany({
-        userId: user._id,
-        purpose: 'PASSWORD_RESET'
-    });
+    if (user.refreshToken !== refreshToken) {
+        res.status(401);
+        throw new Error("Invalid refresh token");
+    }
 
-    const otp = Math.floor(
-        100000 + Math.random() * 900000
-    ).toString();
-
-    const otpHash = await bcrypt.hash(otp, 10);
-
-    const expiresAt = new Date(
-        Date.now() + 24 * 60 * 60 * 1000
+    const accessToken = generateToken(
+        user._id
     );
 
-    await Otp.create({
-        userId: user._id,
-        email: user.email,
-        otpHash,
-        purpose: 'PASSWORD_RESET',
-        expiresAt
-    });
-
-    await sendOtpEmail(user.email, otp);
-
     res.status(200).json({
-        message: "Password reset OTP sent successfully"
+        accessToken
     });
 
 });
 
+const logoutUser = asyncHandler(async (req, res) => {
 
-const resetPassword = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id);
 
-    const {
-        email,
-        otp,
-        newPassword
-    } = req.body;
+    user.refreshToken = null;
 
-
-    // REQUIRED FIELDS
-    if (!email || !otp || !newPassword) {
-        res.status(400);
-        throw new Error(
-            "Email, OTP and new password are required"
-        );
-    }
-
-
-    // EMAIL VALIDATION
-    if (!validator.isEmail(email)) {
-        res.status(400);
-        throw new Error("Please provide a valid email");
-    }
-
-
-    // PASSWORD VALIDATION
-    if (!validator.isStrongPassword(newPassword)) {
-        res.status(400);
-        throw new Error(
-            "Please provide a strong password"
-        );
-    }
-
-
-    // FIND USER
-    const user = await User.findOne({
-        email,
-        isDeleted: false
-    });
-
-    if (!user) {
-        res.status(404);
-        throw new Error("User not found");
-    }
-
-
-    // FIND LATEST RESET OTP
-    const existingOtp = await Otp.findOne({
-        userId: user._id,
-        purpose: 'PASSWORD_RESET',
-        isUsed: false
-    }).sort({ createdAt: -1 });
-
-
-    if (!existingOtp) {
-        res.status(404);
-        throw new Error("OTP not found");
-    }
-
-
-    // CHECK EXPIRY
-    if (existingOtp.expiresAt < new Date()) {
-        res.status(400);
-        throw new Error("OTP has expired");
-    }
-
-
-    // CHECK ATTEMPTS
-    if (existingOtp.attempts >= 5) {
-        res.status(400);
-        throw new Error(
-            "Maximum OTP attempts exceeded"
-        );
-    }
-
-
-    // VERIFY OTP
-    const isOtpMatched = await bcrypt.compare(
-        otp,
-        existingOtp.otpHash
-    );
-
-    if (!isOtpMatched) {
-
-        existingOtp.attempts += 1;
-        await existingOtp.save();
-
-        res.status(400);
-        throw new Error("Invalid OTP");
-    }
-
-
-    // HASH NEW PASSWORD
-    const hashedPassword = await bcrypt.hash(
-        newPassword,
-        10
-    );
-
-
-    // UPDATE PASSWORD
-    user.password = hashedPassword;
     await user.save();
 
-
-    // MARK OTP USED
-    existingOtp.isUsed = true;
-    await existingOtp.save();
-
-
     res.status(200).json({
-        message: "Password reset successfully"
+        message: "Logged out successfully"
     });
 
 });
-
 
 
 module.exports = {
     registerUser,
-    verifyEmailOtp,
     loginUser,
-    forgotPassword,
-    resetPassword
+    refreshAccessToken,
+    logoutUser
 
 };

@@ -5,7 +5,9 @@ const connectDB = require('./config/db');
 const morgan = require("morgan");
  
 
-const userRoutes = require('./routes/userRoutes');
+const authRoutes = require('./routes/authRoutes');
+const otpRoutes = require('./routes/otpRoutes');
+const passwordRoutes = require('./routes/passwordRoutes');
 
 
 
@@ -22,7 +24,9 @@ app.use(express.json());
 
 
 // ROUTES
-app.use('/api',apiKeyMiddleware, userRoutes);
+app.use('/api',apiKeyMiddleware, authRoutes);
+app.use('/api',apiKeyMiddleware, otpRoutes);
+app.use('/api',apiKeyMiddleware, passwordRoutes);
 
 
 app.use(errorMiddleware);
