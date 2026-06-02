@@ -17,7 +17,7 @@ const redoc = require("redoc-express");
 const authRoutes = require('./routes/authRoutes');
 const otpRoutes = require('./routes/otpRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
-
+const systemRoutes = require('./routes/system-routes');
 
 
 const errorMiddleware = require('./middleware/errorMiddleware');
@@ -30,6 +30,8 @@ connectDB();
 
 // REQUIRED FOR req.body
 app.use(express.json());
+
+app.use('/api', systemRoutes);
 app.use(
   "/docs",
   swaggerUi.serve,
@@ -50,13 +52,8 @@ app.get("/openapi.yaml", (req, res) => {
 });
 
 
-
-// REQUIRED FOR req.body
-app.use(express.json());
-
-
-
 // ROUTES
+
 app.use('/api',apiKeyMiddleware, authRoutes);
 app.use('/api',apiKeyMiddleware, otpRoutes);
 app.use('/api',apiKeyMiddleware, passwordRoutes);
