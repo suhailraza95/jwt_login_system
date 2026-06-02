@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 
+const path = require('path');
 const express = require('express');
 const connectDB = require('./config/db');
 const morgan = require("morgan");
@@ -8,7 +9,7 @@ const morgan = require("morgan");
 const swaggerUi = require("swagger-ui-express");
 const YAML = require("yamljs");
 const swaggerDocument =
-  YAML.load("./docs/openapi.yaml");
+  YAML.load(path.join(__dirname, "docs/openapi.yaml"));
 
 const redoc = require("redoc-express");
  
