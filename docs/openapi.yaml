@@ -1,0 +1,367 @@
+openapi: 3.0.3
+info:
+  title: JWT Login System API
+  version: 1.0.0
+  description: JWT authentication, email verification, refresh token, and password reset API.
+servers:
+  - url: http://localhost:5004
+    description: Local development server
+tags:
+  - name: Auth
+    description: Authentication APIs
+  - name: OTP
+    description: Email OTP verification APIs
+  - name: Password
+    description: Password reset APIs
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - privacyPolicyConsent
+        - termsOfServiceConsent
+        - marketingConsent
+        - aiProcessingConsent
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+          minLength: 3
+          example: suhailraza
+        email:
+          type: string
+          format: email
+          example: suhailhome96@gmail.com
+        password:
+          type: string
+          minLength: 6
+          example: StrongPass@123
+        privacyPolicyConsent:
+          type: boolean
+          example: true
+        termsOfServiceConsent:
+          type: boolean
+          example: true
+        marketingConsent:
+          type: boolean
+          example: false
+        aiProcessingConsent:
+          type: boolean
+          example: true
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          example: suhailhome96@gmail.com
+        password:
+          type: string
+          minLength: 6
+          example: StrongPass@123
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      additionalProperties: false
+      properties:
+        refreshToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    VerifyOtpRequest:
+      type: object
+      required:
+        - email
+        - otp
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          example: suhailhome96@gmail.com
+        otp:
+          type: string
+          minLength: 6
+          maxLength: 6
+          example: "123456"
+    ForgotPasswordRequest:
+      type: object
+      required:
+        - email
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          example: suhailhome96@gmail.com
+    ResetPasswordRequest:
+      type: object
+      required:
+        - email
+        - otp
+        - newPassword
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          example: suhailhome96@gmail.com
+        otp:
+          type: string
+          minLength: 6
+          maxLength: 6
+          example: "123456"
+        newPassword:
+          type: string
+          minLength: 8
+          example: NewStrongPass@123
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Operation completed successfully
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: User registered successfully. OTP sent to email.
+        userId:
+          type: string
+          example: 665ef7d884cc9c28e4911111
+        email:
+          type: string
+          format: email
+          example: suhailhome96@gmail.com
+    LoginResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Login successful
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refreshToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    RefreshTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Validation error
+paths:
+  /api/register:
+    post:
+      tags:
+        - Auth
+      summary: Register user
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully and OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '200':
+          description: Existing unverified account found and OTP resent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: Validation error or user already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/login:
+    post:
+      tags:
+        - Auth
+      summary: Login user
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials or email not verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/refresh-token:
+    post:
+      tags:
+        - Auth
+      summary: Refresh access token
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Access token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/logout:
+    post:
+      tags:
+        - Auth
+      summary: Logout user
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+  /api/verifyotp:
+    post:
+      tags:
+        - OTP
+      summary: Verify email OTP
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOtpRequest'
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid, expired, or already used OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User or OTP not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/forgot-password:
+    post:
+      tags:
+        - Password
+      summary: Send password reset OTP
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+      responses:
+        '200':
+          description: Password reset OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/reset-password:
+    post:
+      tags:
+        - Password
+      summary: Reset password
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: Invalid request, OTP, or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User or OTP not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
