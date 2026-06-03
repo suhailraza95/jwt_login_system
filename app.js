@@ -18,6 +18,7 @@ const authRoutes = require('./routes/authRoutes');
 const otpRoutes = require('./routes/otpRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
 const systemRoutes = require('./routes/system-routes');
+const docsRoutes = require("./routes/docsRoutes");
 
 
 const errorMiddleware = require('./middleware/errorMiddleware');
@@ -32,24 +33,7 @@ connectDB();
 app.use(express.json());
 
 app.use('/api', systemRoutes);
-app.use(
-  "/docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerDocument)
-);
-
-app.get(
-  "/redoc",
-  redoc({
-    title: "JWT Login System API",
-    specUrl: "/openapi.yaml"
-  })
-);
-app.get("/openapi.yaml", (req, res) => {
-  res.sendFile(
-    path.join(__dirname, "docs/openapi.yaml")
-  );
-});
+app.use("/docs", docsRoutes);
 
 
 // ROUTES
