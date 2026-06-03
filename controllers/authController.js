@@ -1,9 +1,11 @@
 const asyncHandler = require('express-async-handler');
 const validator = require('validator');
 const bcrypt = require('bcryptjs');
+const jwt = require("jsonwebtoken");
 
 const User = require('../models/userModel');
 const generateToken = require('../resources/generateToken');
+const generateRefreshToken = require('../resources/generateRefreshToken');
 const Otp = require('../models/otpModel');
 
 const { sendOtpEmail } = require('../services/mailService');
@@ -118,8 +120,8 @@ const registerUser = asyncHandler(async (req, res) => {
         });
 
         // SEND OTP EMAIL
-       // await sendOtpEmail(userExists.email, otp);
-        console.log("account exists otp: ", otp)
+        await sendOtpEmail(userExists.email, otp);
+       // console.log("account exists otp: ", otp)
         return res.status(200).json({
             message: "Account exists but email is not verified. A new OTP has been sent.",
             userId: userExists._id,
@@ -168,8 +170,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
 
     // SEND OTP EMAIL
-    //await sendOtpEmail(user.email, otp);
-    console.log(otp)
+    await sendOtpEmail(user.email, otp);
+    //console.log(otp)
 
     // RESPONSE
     res.status(201).json({
@@ -180,100 +182,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
 });
 
-// VERIFY EMAIL OTP
-const verifyEmailOtp = asyncHandler(async (req, res) => {
 
-    const {
-        email,
-        otp
-    } = req.body;
-
-
-    // REQUIRED FIELDS
-    if (!email || !otp) {
-        res.status(400);
-        throw new Error("Email and OTP are required");
-    }
-
-
-    // FIND USER
-    const user = await User.findOne({ email });
-
-    if (!user) {
-        res.status(404);
-        throw new Error("User not found");
-    }
-
-
-    // CHECK IF ALREADY VERIFIED
-    if (user.isEmailVerified) {
-        res.status(400);
-        throw new Error("Email already verified");
-    }
-
-
-    // GET LATEST OTP
-    const existingOtp = await Otp.findOne({
-        userId: user._id,
-        purpose: 'EMAIL_VERIFICATION',
-        isUsed: false
-    }).sort({ createdAt: -1 });
-
-
-    if (!existingOtp) {
-        res.status(404);
-        throw new Error("OTP not found");
-    }
-
-
-    // CHECK OTP EXPIRY
-    if (existingOtp.expiresAt < new Date()) {
-        res.status(400);
-        throw new Error("OTP has expired");
-    }
-
-
-    // CHECK ATTEMPTS
-    if (existingOtp.attempts >= 5) {
-        res.status(400);
-        throw new Error("Maximum OTP attempts exceeded");
-    }
-
-
-    // COMPARE OTP
-    const isOtpMatched = await bcrypt.compare(
-        otp,
-        existingOtp.otpHash
-    );
-
-
-    // INCREASE ATTEMPTS IF WRONG
-    if (!isOtpMatched) {
-
-        existingOtp.attempts += 1;
-        await existingOtp.save();
-
-        res.status(400);
-        throw new Error("Invalid OTP");
-    }
-
-
-    // MARK OTP AS USED
-    existingOtp.isUsed = true;
-    await existingOtp.save();
-
-
-    // VERIFY USER EMAIL
-    user.isEmailVerified = true;
-    await user.save();
-
-
-    // RESPONSE
-    res.status(200).json({
-        message: "Email verified successfully"
-    });
-
-});
 
 // LOGIN USER
 const loginUser = asyncHandler(async (req, res) => {
@@ -335,14 +244,23 @@ const loginUser = asyncHandler(async (req, res) => {
 
 
     // GENERATE JWT TOKEN
-    const token = generateToken(user._id);
+    const accessToken = generateToken(user._id);
+
+    const refreshToken = generateRefreshToken(
+    user._id
+    );
+
+    user.refreshToken = refreshToken;
+
+await user.save();
 
 
     // RESPONSE
     res.status(200).json({
         message: "Login successful",
 
-        token,
+        accessToken,
+        refreshToken,
 
         user: {
             _id: user._id,
@@ -354,9 +272,66 @@ const loginUser = asyncHandler(async (req, res) => {
 
 });
 
+
+
+const refreshAccessToken = asyncHandler(
+async (req, res) => {
+
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+        res.status(401);
+        throw new Error("Refresh token required");
+    }
+
+    const decoded = jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET
+    );
+
+    const user = await User.findById(
+        decoded.id
+    );
+
+    if (!user) {
+        res.status(401);
+        throw new Error("User not found");
+    }
+
+    if (user.refreshToken !== refreshToken) {
+        res.status(401);
+        throw new Error("Invalid refresh token");
+    }
+
+    const accessToken = generateToken(
+        user._id
+    );
+
+    res.status(200).json({
+        accessToken
+    });
+
+});
+
+const logoutUser = asyncHandler(async (req, res) => {
+
+    const user = await User.findById(req.user.id);
+
+    user.refreshToken = null;
+
+    await user.save();
+
+    res.status(200).json({
+        message: "Logged out successfully"
+    });
+
+});
+
+
 module.exports = {
     registerUser,
-    verifyEmailOtp,
-    loginUser
+    loginUser,
+    refreshAccessToken,
+    logoutUser
 
 };
